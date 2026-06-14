@@ -58,3 +58,9 @@ describe('BotController', () => {
             expect(mockRes.send).toHaveBeenCalledWith('12345_challenge');
         });
     });
+    describe('handleMessage Command Routing', () => {
+        it('should handle CREATE GROUP command', async () => {
+            mockReq = { body: createWebhookPayload('CREATE GROUP Family 100 WEEKLY') };
+            await botController.handleMessage(mockReq as Request, mockRes as Response);
+            expect(mockRes.sendStatus).toHaveBeenCalledWith(200);
+        });
