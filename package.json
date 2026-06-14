@@ -1,50 +1,33 @@
 {
-  "name": "Whatsapp-chatgpt",
-  "version": "1",
-  "description": "WHATSAPP CHATGPT BOT, USING OPENAI",
+  "name": "whatsapp-chatgpt",
+  "version": "1.0.0",
+  "description": "**Name:** Kolo",
   "main": "index.js",
-  "type": "commonjs",
   "scripts": {
-    "start": "node index.js"
-  },
-  "keywords": [
-    "termux",
-    "whatsapp-openai",
-    "whatsapp-openai",
-    "whatsapp-bot",
-    "whatsapp-baileys",
-    "baileys-md",
-    "bot-wa",
-    "bot-md",
-    "whatsapp-multi-device"
-  ],
-  "base": "https://github.com/harshitethic",
-  "author": "harshitethic",
-  "license": "MIT",
-  "dependencies": {
-    "@adiwajshing/baileys": "4.4.0",
-    "@adiwajshing/keyed-db": "^0.2.4",
-    "awesome-phonenumber": "^2.64.0",
-    "chalk": "^4.1.2",
-    "crypto": "^1.0.1",
-    "figlet": "^1.5.2",
-    "fs": "0.0.1-security",
-    "lodash": "^4.17.21",
-    "openai": "^3.1.0",
-    "pino": "^7.0.5",
-    "qrcode-terminal": "^0.12.0",
-    "util": "^0.12.4"
-  },
-  "directories": {
-    "lib": "lib",
-    "src": "src"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/harshitethic/whatsapp-chatgpt.git"
   },
-  "bugs": {
-    "url": "https://github.com/harshitethic/whatsapp-chatgpt/issues"
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "homepage": "https://github.com/harshitethic/whatsapp-chatgpt#readme",
+  "dependencies": {
+    "@prisma/client": "^7.8.0",
+    "@stellar/stellar-sdk": "^15.1.0",
+    "axios": "^1.17.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pg": "^8.21.0"
   },
-  "homepage": "https://github.com/harshitethic/whatsapp-chatgpt#readme"
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.9.3",
+    "prisma": "^7.8.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
 }
