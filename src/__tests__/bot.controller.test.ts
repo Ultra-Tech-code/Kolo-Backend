@@ -16,3 +16,8 @@ jest.mock('../services/user.service', () => ({
         getOrCreateUser: jest.fn().mockResolvedValue({ 
             id: 'u1', phoneNumber: '12345', username: 'john', stellarWallet: 'G_PUB:S_SEC', createdAt: new Date()
         }),
+        resolveUser: jest.fn().mockResolvedValue({ 
+            id: 'u2', phoneNumber: '67890', username: 'jane', stellarWallet: 'G_PUB2:S_SEC2'
+        })
+    }))
+}));
