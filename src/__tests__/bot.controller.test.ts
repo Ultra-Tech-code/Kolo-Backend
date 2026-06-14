@@ -47,3 +47,5 @@ describe('BotController', () => {
         object: 'whatsapp_business_account',
         entry: [{ changes: [{ value: { metadata: { phone_number_id: '123' }, messages: [{ from: '12345', text: { body: text } }] } }] }]
     });
+    describe('verifyWebhook', () => {
+        it('should return challenge for valid verify token', () => {
