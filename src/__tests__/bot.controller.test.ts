@@ -54,3 +54,7 @@ describe('BotController', () => {
             };
             process.env.VERIFY_TOKEN = 'test_token';
             botController.verifyWebhook(mockReq as Request, mockRes as Response);
+            expect(mockRes.status).toHaveBeenCalledWith(200);
+            expect(mockRes.send).toHaveBeenCalledWith('12345_challenge');
+        });
+    });
