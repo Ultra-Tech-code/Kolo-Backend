@@ -11,3 +11,8 @@ jest.mock('../services/stellar.service', () => ({
         sendPayment: jest.fn().mockResolvedValue({ successful: true, hash: 'tx123' })
     }))
 }));
+jest.mock('../services/user.service', () => ({
+    UserService: jest.fn().mockImplementation(() => ({
+        getOrCreateUser: jest.fn().mockResolvedValue({ 
+            id: 'u1', phoneNumber: '12345', username: 'john', stellarWallet: 'G_PUB:S_SEC', createdAt: new Date()
+        }),
