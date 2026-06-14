@@ -43,4 +43,26 @@ export class StellarService {
             return 'Error checking balance or account not funded.';
         }
     }
+
+    public async sendPayment(sourceSecret: string, destinationPublicKey: string, amount: string): Promise<any> {
+        const sourceKeypair = StellarSdk.Keypair.fromSecret(sourceSecret);
+        const sourceAccount = await this.server.loadAccount(sourceKeypair.publicKey());
+
+        const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
+            fee: (await this.server.fetchBaseFee()).toString(),
+            networkPassphrase: config.STELLAR_NETWORK === 'TESTNET' 
+                ? StellarSdk.Networks.TESTNET 
+                : StellarSdk.Networks.PUBLIC
+        })
+        .addOperation(StellarSdk.Operation.payment({
+            destination: destinationPublicKey,
+            asset: StellarSdk.Asset.native(),
+            amount: amount,
+        }))
+        .setTimeout(30)
+        .build();
+
+        transaction.sign(sourceKeypair);
+        return await this.server.submitTransaction(transaction);
+    }
 }

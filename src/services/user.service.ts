@@ -32,4 +32,12 @@ export class UserService {
         }
         return user;
     }
+
+    public async resolveUser(target: string): Promise<any> {
+        if (target.startsWith('@')) {
+            return await prisma.user.findUnique({ where: { username: target.substring(1) } });
+        } else {
+            return await prisma.user.findUnique({ where: { phoneNumber: target } });
+        }
+    }
 }

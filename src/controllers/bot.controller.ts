@@ -136,7 +136,28 @@ export class BotController {
         }
         const amount = args[0];
         const target = args[1];
-        await whatsappService.sendMessage(from, `[SEND] Sending ${amount} USDC to ${target}...`);
+
+        const sender = await userService.getOrCreateUser(from);
+        if (!sender.stellarWallet) {
+            return await whatsappService.sendMessage(from, 'Error: Your wallet is not configured.');
+        }
+
+        const recipient = await userService.resolveUser(target);
+        if (!recipient || !recipient.stellarWallet) {
+            return await whatsappService.sendMessage(from, `Error: Could not find wallet for user ${target}.`);
+        }
+
+        const senderSecret = sender.stellarWallet.split(':')[1];
+        const recipientPublicKey = recipient.stellarWallet.split(':')[0];
+
+        try {
+            await whatsappService.sendMessage(from, `[SEND] Initiating transfer of ${amount} XLM to ${target}...`);
+            await stellarService.sendPayment(senderSecret, recipientPublicKey, amount);
+            await whatsappService.sendMessage(from, `✅ Successfully sent ${amount} XLM to ${target}!`);
+        } catch (e: any) {
+            console.error(e);
+            await whatsappService.sendMessage(from, `❌ [SEND] Failed: ${e.message || 'Transaction error'}`);
+        }
     }
 
     private async handleRequest(from: string, args: string[]) {
@@ -145,7 +166,17 @@ export class BotController {
         }
         const amount = args[0];
         const target = args[1];
-        await whatsappService.sendMessage(from, `[REQUEST] Requesting ${amount} USDC from ${target}...`);
+
+        const sender = await userService.getOrCreateUser(from);
+        const recipient = await userService.resolveUser(target);
+
+        if (!recipient) {
+            return await whatsappService.sendMessage(from, `Error: Could not find user ${target}.`);
+        }
+
+        const senderHandle = sender.username ? '@' + sender.username : sender.phoneNumber;
+        await whatsappService.sendMessage(recipient.phoneNumber, `🔔 [REQUEST] ${senderHandle} is requesting ${amount} XLM from you. Reply with: SEND ${amount} ${sender.phoneNumber}`);
+        await whatsappService.sendMessage(from, `[REQUEST] Request for ${amount} XLM sent to ${target}.`);
     }
 
     private async handleCreateGroup(from: string, args: string[]) {
