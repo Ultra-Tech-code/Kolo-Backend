@@ -22,6 +22,10 @@ export class MessageProcessor {
         this.groupService = groupService ?? new GroupService();
     }
 
+    private isValidAmount(amountStr: string): boolean {
+        return /^\d+(\.\d+)?$/.test(amountStr);
+    }
+
     public async processCommand(from: string, text: string) {
         const tokens = text.trim().split(/\s+/);
         if (tokens.length === 0) return;
@@ -97,6 +101,9 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, 'Usage: SEND <amount> <@username or phone>');
         }
         const amount = args[0];
+        if (!this.isValidAmount(amount)) {
+            return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
+        }
         const target = args[1];
 
         const sender = await this.userService.getOrCreateUser(from);
@@ -128,6 +135,9 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, 'Usage: REQUEST <amount> <@username or phone>');
         }
         const amount = args[0];
+        if (!this.isValidAmount(amount)) {
+            return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
+        }
         const target = args[1];
 
         const sender = await this.userService.getOrCreateUser(from);
@@ -148,8 +158,11 @@ export class MessageProcessor {
         }
         const frequency = args.pop() || 'MONTHLY';
         const amountStr = args.pop() || '0';
+        if (!this.isValidAmount(amountStr)) {
+            return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
+        }
         const name = args.join(' ');
-        const amount = parseFloat(amountStr);
+        const amount = amountStr;
 
         const user = await this.userService.getOrCreateUser(from);
 
@@ -224,7 +237,10 @@ export class MessageProcessor {
             return await this.whatsappService.sendMessage(from, 'Usage: CONTRIBUTE <amount>');
         }
         const amountStr = args[0];
-        const amount = parseFloat(amountStr);
+        if (!this.isValidAmount(amountStr)) {
+            return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
+        }
+        const amount = amountStr;
         const user = await this.userService.getOrCreateUser(from);
 
         const memberships = await this.groupService.getGroupStatus(user.id);
@@ -250,7 +266,11 @@ export class MessageProcessor {
         if (args.length < 1) {
             return await this.whatsappService.sendMessage(from, 'Usage: WITHDRAW <amount>');
         }
-        const amount = parseFloat(args[0]);
+        const amountStr = args[0];
+        if (!this.isValidAmount(amountStr)) {
+            return await this.whatsappService.sendMessage(from, 'Error: Invalid amount format.');
+        }
+        const amount = amountStr;
         const user = await this.userService.getOrCreateUser(from);
 
         const memberships = await this.groupService.getGroupStatus(user.id);

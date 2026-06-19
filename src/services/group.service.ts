@@ -1,7 +1,10 @@
 import { prisma } from '../lib/prisma';
+import { PrismaClient, Prisma } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export class GroupService {
-    public async createGroup(userId: string, name: string, amount: number, frequency: string) {
+    public async createGroup(userId: string, name: string, amount: string | Prisma.Decimal, frequency: string) {
         return await prisma.savingsGroup.create({
             data: {
                 name,
@@ -38,7 +41,7 @@ export class GroupService {
         });
     }
 
-    public async addContribution(userId: string, groupId: string, amount: number, txHash: string) {
+    public async addContribution(userId: string, groupId: string, amount: string | Prisma.Decimal, txHash: string) {
         return await prisma.contribution.create({
             data: {
                 userId,

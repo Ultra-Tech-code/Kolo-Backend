@@ -75,7 +75,7 @@ describe('MessageProcessor', () => {
 
         it('should handle CREATE GROUP command', async () => {
             await processor.processCommand('12345', 'CREATE GROUP Family 100 WEEKLY');
-            expect(mockCreateGroup).toHaveBeenCalledWith('u1', 'Family', 100, 'WEEKLY');
+            expect(mockCreateGroup).toHaveBeenCalledWith('u1', 'Family', '100', 'WEEKLY');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Group'));
         });
 
@@ -155,7 +155,7 @@ describe('MessageProcessor', () => {
     describe('handleContribute', () => {
         it('should record contribution and notify on success', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE 50');
-            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', 50, expect.stringContaining('mock_tx_'));
+            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '50', expect.stringContaining('mock_tx_'));
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Successfully contributed'));
         });
 
@@ -201,7 +201,7 @@ describe('MessageProcessor', () => {
     describe('handleCreateGroup', () => {
         it('should create group with parsed args', async () => {
             await processor.processCommand('12345', 'CREATE GROUP Savings 50 MONTHLY');
-            expect(mockCreateGroup).toHaveBeenCalledWith('u1', 'Savings', 50, 'MONTHLY');
+            expect(mockCreateGroup).toHaveBeenCalledWith('u1', 'Savings', '50', 'MONTHLY');
         });
 
         it('should show usage when insufficient args', async () => {
@@ -294,10 +294,10 @@ describe('MessageProcessor', () => {
     });
 
     describe('handleContribute edge cases', () => {
-        it('should handle NaN amount gracefully', async () => {
+        it('should handle invalid amount gracefully', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE abc');
-            const addCall = mockAddContribution.mock.calls[0];
-            expect(addCall[2]).toBeNaN();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Invalid amount'));
+            expect(mockAddContribution).not.toHaveBeenCalled();
         });
     });
 });
