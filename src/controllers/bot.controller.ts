@@ -35,7 +35,7 @@ export class BotController {
                 const msgBody = body.entry[0].changes[0].value.messages[0].text?.body || '';
 
                 if (msgBody) {
-                    console.log(`Received message from ${from}: ${msgBody}`);
+                    console.log(`Received message`);
 
                     await enqueueMessage({
                         from,

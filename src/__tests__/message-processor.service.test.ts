@@ -3,11 +3,15 @@ import { MessageProcessor } from '../services/message-processor.service';
 const mockSendMessage = jest.fn().mockResolvedValue(true);
 const mockCheckBalance = jest.fn().mockResolvedValue('100.50');
 const mockSendPayment = jest.fn().mockResolvedValue({ successful: true, hash: 'tx123' });
+const mockDecrypt = jest.fn().mockReturnValue('S_SEC');
 const mockGetOrCreateUser = jest.fn().mockResolvedValue({
-    id: 'u1', phoneNumber: '12345', username: 'john', stellarWallet: 'G_PUB:S_SEC', createdAt: new Date(),
+    id: 'u1', phoneNumber: '12345', username: 'john',
+    stellarWallet: JSON.stringify({ publicKey: 'G_PUB', encryptedSecret: 'ENC_SEC', iv: 'IV', authTag: 'TAG' }),
+    createdAt: new Date(),
 });
 const mockResolveUser = jest.fn().mockResolvedValue({
-    id: 'u2', phoneNumber: '67890', username: 'jane', stellarWallet: 'G_PUB2:S_SEC2',
+    id: 'u2', phoneNumber: '67890', username: 'jane',
+    stellarWallet: JSON.stringify({ publicKey: 'G_PUB2', encryptedSecret: 'ENC_SEC2', iv: 'IV2', authTag: 'TAG2' }),
 });
 const mockCreateGroup = jest.fn().mockResolvedValue({ id: 'g1' });
 const mockJoinGroup = jest.fn().mockResolvedValue({ id: 'gm1' });
@@ -15,6 +19,10 @@ const mockGetGroupStatus = jest.fn().mockResolvedValue([
     { role: 'CREATOR', groupId: 'g1', group: { id: 'g1', name: 'G1', contributionAmount: 10, contributionFrequency: 'MONTHLY', members: [] } },
 ]);
 const mockAddContribution = jest.fn().mockResolvedValue({ id: 'c1' });
+
+jest.mock('../utils/encryption.util', () => ({
+    decrypt: (...args: any[]) => mockDecrypt(...args),
+}));
 
 const mockWhatsAppService = { sendMessage: mockSendMessage };
 const mockStellarService = { checkBalance: mockCheckBalance, sendPayment: mockSendPayment, generateWallet: jest.fn(), fundTestnetAccount: jest.fn() };
@@ -67,7 +75,7 @@ describe('MessageProcessor', () => {
 
         it('should handle CREATE GROUP command', async () => {
             await processor.processCommand('12345', 'CREATE GROUP Family 100 WEEKLY');
-            expect(mockCreateGroup).toHaveBeenCalledWith('u1', 'Family', 100, 'WEEKLY');
+            expect(mockCreateGroup).toHaveBeenCalledWith('u1', 'Family', '100', 'WEEKLY');
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Group'));
         });
 
@@ -95,13 +103,13 @@ describe('MessageProcessor', () => {
     });
 
     describe('handleSend', () => {
-        it('should send payment and notify on success', async () => {
+        it('should decrypt sender secret and send payment on success', async () => {
             await processor.processCommand('12345', 'SEND 10 @jane');
 
             expect(mockGetOrCreateUser).toHaveBeenCalledWith('12345');
             expect(mockResolveUser).toHaveBeenCalledWith('@jane');
+            expect(mockDecrypt).toHaveBeenCalledWith('ENC_SEC', 'IV', 'TAG');
             expect(mockSendPayment).toHaveBeenCalledWith('S_SEC', 'G_PUB2', '10');
-
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Initiating transfer'));
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Successfully sent'));
         });
@@ -147,7 +155,7 @@ describe('MessageProcessor', () => {
     describe('handleContribute', () => {
         it('should record contribution and notify on success', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE 50');
-            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', 50, expect.stringContaining('mock_tx_'));
+            expect(mockAddContribution).toHaveBeenCalledWith('u1', 'g1', '50', expect.stringContaining('mock_tx_'));
             expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Successfully contributed'));
         });
 
@@ -193,7 +201,7 @@ describe('MessageProcessor', () => {
     describe('handleCreateGroup', () => {
         it('should create group with parsed args', async () => {
             await processor.processCommand('12345', 'CREATE GROUP Savings 50 MONTHLY');
-            expect(mockCreateGroup).toHaveBeenCalledWith('u1', 'Savings', 50, 'MONTHLY');
+            expect(mockCreateGroup).toHaveBeenCalledWith('u1', 'Savings', '50', 'MONTHLY');
         });
 
         it('should show usage when insufficient args', async () => {
@@ -286,10 +294,10 @@ describe('MessageProcessor', () => {
     });
 
     describe('handleContribute edge cases', () => {
-        it('should handle NaN amount gracefully', async () => {
+        it('should handle invalid amount gracefully', async () => {
             await processor.processCommand('12345', 'CONTRIBUTE abc');
-            const addCall = mockAddContribution.mock.calls[0];
-            expect(addCall[2]).toBeNaN();
+            expect(mockSendMessage).toHaveBeenCalledWith('12345', expect.stringContaining('Invalid amount'));
+            expect(mockAddContribution).not.toHaveBeenCalled();
         });
     });
 });

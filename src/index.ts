@@ -3,6 +3,10 @@ import botRoutes from './routes/bot.routes';
 import { config } from './config/env';
 import { startWorker } from './workers/message.worker';
 
+if (!config.ENCRYPTION_KEY) {
+    throw new Error('ENCRYPTION_KEY environment variable is required');
+}
+
 const app = express();
 
 app.use(express.json());

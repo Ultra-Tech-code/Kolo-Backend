@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { StellarService } from './stellar.service';
-
-const prisma = new PrismaClient();
 const stellarService = new StellarService();
 
 export class UserService {
@@ -16,11 +14,22 @@ export class UserService {
             
             // Fund wallet with Friendbot asynchronously
             stellarService.fundTestnetAccount(publicKey).catch(err => {
+            const wallet = stellarService.generateWallet();
+
+            try {
+                await stellarService.fundTestnetAccount(wallet.publicKey);
+            } catch (err) {
                 console.error('Failed to fund testnet account:', err);
-            });
+            }
 
             // Store publicKey:secret in the stellarWallet field for this custodial MVP
             const walletData = `${publicKey}:${secret}`;
+            const walletData = JSON.stringify({
+                publicKey: wallet.publicKey,
+                encryptedSecret: wallet.encryptedSecret,
+                iv: wallet.iv,
+                authTag: wallet.authTag,
+            });
 
             user = await prisma.user.create({
                 data: {

@@ -17,7 +17,9 @@ jest.mock('../services/stellar.service', () => {
     const mStellarService = {
         generateWallet: jest.fn(() => ({
             publicKey: 'G_MOCK_PUBLIC_KEY',
-            secret: 'S_MOCK_SECRET_KEY'
+            encryptedSecret: 'ENC_SECRET',
+            iv: 'IV',
+            authTag: 'TAG'
         })),
         fundTestnetAccount: jest.fn().mockResolvedValue(true)
     };
@@ -52,7 +54,13 @@ describe('UserService', () => {
 
         it('should create new user with generated stellar wallet if not found', async () => {
             prismaClientMock.user.findUnique.mockResolvedValueOnce(null);
-            const createdUser = { id: '2', phoneNumber: '0987654321', stellarWallet: 'G_MOCK_PUBLIC_KEY:S_MOCK_SECRET_KEY' };
+            const expectedWallet = JSON.stringify({
+                publicKey: 'G_MOCK_PUBLIC_KEY',
+                encryptedSecret: 'ENC_SECRET',
+                iv: 'IV',
+                authTag: 'TAG'
+            });
+            const createdUser = { id: '2', phoneNumber: '0987654321', stellarWallet: expectedWallet };
             prismaClientMock.user.create.mockResolvedValueOnce(createdUser);
 
             const result = await userService.getOrCreateUser('0987654321');
@@ -62,10 +70,29 @@ describe('UserService', () => {
             expect(prismaClientMock.user.create).toHaveBeenCalledWith({
                 data: {
                     phoneNumber: '0987654321',
-                    stellarWallet: 'G_MOCK_PUBLIC_KEY:S_MOCK_SECRET_KEY'
+                    stellarWallet: expectedWallet
                 }
             });
             expect(result).toEqual(createdUser);
+        });
+
+        it('should handle friendbot funding failure gracefully', async () => {
+            prismaClientMock.user.findUnique.mockResolvedValueOnce(null);
+            stellarServiceMock.fundTestnetAccount.mockRejectedValueOnce(new Error('Network error'));
+            const expectedWallet = JSON.stringify({
+                publicKey: 'G_MOCK_PUBLIC_KEY',
+                encryptedSecret: 'ENC_SECRET',
+                iv: 'IV',
+                authTag: 'TAG'
+            });
+            const createdUser = { id: '3', phoneNumber: '1111111111', stellarWallet: expectedWallet };
+            prismaClientMock.user.create.mockResolvedValueOnce(createdUser);
+
+            const result = await userService.getOrCreateUser('1111111111');
+
+            expect(stellarServiceMock.fundTestnetAccount).toHaveBeenCalledWith('G_MOCK_PUBLIC_KEY');
+            expect(prismaClientMock.user.create).toHaveBeenCalled();
+            expect(result.stellarWallet).toBe(expectedWallet);
         });
     });
 

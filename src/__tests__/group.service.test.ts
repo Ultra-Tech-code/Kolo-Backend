@@ -32,12 +32,12 @@ describe('GroupService', () => {
             const mockGroup = { id: 'g1', name: 'Test Group' };
             prismaClientMock.savingsGroup.create.mockResolvedValueOnce(mockGroup);
 
-            const result = await groupService.createGroup('u1', 'Test Group', 100, 'WEEKLY');
+            const result = await groupService.createGroup('u1', 'Test Group', '100', 'WEEKLY');
 
             expect(prismaClientMock.savingsGroup.create).toHaveBeenCalledWith({
                 data: {
                     name: 'Test Group',
-                    contributionAmount: 100,
+                    contributionAmount: '100',
                     contributionFrequency: 'WEEKLY',
                     members: {
                         create: {
@@ -93,13 +93,13 @@ describe('GroupService', () => {
             const mockContribution = { id: 'c1', amount: 50 };
             prismaClientMock.contribution.create.mockResolvedValueOnce(mockContribution);
 
-            const result = await groupService.addContribution('u1', 'g1', 50, 'hash123');
+            const result = await groupService.addContribution('u1', 'g1', '50', 'hash123');
 
             expect(prismaClientMock.contribution.create).toHaveBeenCalledWith({
                 data: {
                     userId: 'u1',
                     groupId: 'g1',
-                    amount: 50,
+                    amount: '50',
                     transactionHash: 'hash123',
                     status: 'COMPLETED'
                 }

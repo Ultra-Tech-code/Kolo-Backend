@@ -26,7 +26,7 @@ export function startWorker(): void {
         'message-processing',
         async (job) => {
             const { from, msgBody } = job.data;
-            console.log(`Processing job ${job.id}: message from ${from}`);
+            console.log(`Processing job ${job.id}`);
             await processor.processCommand(from, msgBody);
         },
         {
