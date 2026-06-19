@@ -9,6 +9,11 @@ export class UserService {
         });
 
         if (!user) {
+            // Generate Stellar wallet
+            const { publicKey, secret } = stellarService.generateWallet();
+            
+            // Fund wallet with Friendbot asynchronously
+            stellarService.fundTestnetAccount(publicKey).catch(err => {
             const wallet = stellarService.generateWallet();
 
             try {
@@ -17,6 +22,8 @@ export class UserService {
                 console.error('Failed to fund testnet account:', err);
             }
 
+            // Store publicKey:secret in the stellarWallet field for this custodial MVP
+            const walletData = `${publicKey}:${secret}`;
             const walletData = JSON.stringify({
                 publicKey: wallet.publicKey,
                 encryptedSecret: wallet.encryptedSecret,
@@ -31,6 +38,7 @@ export class UserService {
                     language: 'en',
                 }
             });
+            console.log(`Created new user for ${phoneNumber} with wallet ${publicKey}`);
         }
         return user;
     }

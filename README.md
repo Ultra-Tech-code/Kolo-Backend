@@ -253,6 +253,17 @@ graph TD
 * Secure webhook validation
 * Transaction signing verification
 * Smart contract validation
+* Keep wallet generation out of logs and minimize secret lifetime in memory
+
+### Production Hardening
+
+When deploying wallet-generation code in production:
+
+* Disable core dumps with `ulimit -c 0`
+* Disable crash dump collection in the container runtime or host OS
+* Prefer an isolated key-management service for final wallet custody
+* Never log `secret` values or derived wallet payloads
+* Review memory-dump settings after OS, container, and base-image upgrades
 
 ### Compliance
 
