@@ -123,7 +123,9 @@ export class BotController {
      * cleared so it cannot keep the event loop alive.
      */
     private async enqueueWithTimeout(data: MessageJobData): Promise<void> {
-        let timer: ReturnType<typeof setTimeout> | undefined;
+        // Assigned synchronously inside the Promise executor below, so it is
+        // always set by the time `finally` runs.
+        let timer!: ReturnType<typeof setTimeout>;
         const timeout = new Promise<never>((_, reject) => {
             timer = setTimeout(
                 () => reject(new Error(`enqueueMessage timed out after ${ENQUEUE_TIMEOUT_MS}ms`)),
@@ -134,9 +136,7 @@ export class BotController {
         try {
             await Promise.race([enqueueMessage(data), timeout]);
         } finally {
-            if (timer) {
-                clearTimeout(timer);
-            }
+            clearTimeout(timer);
         }
     }
 }
