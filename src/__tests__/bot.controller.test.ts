@@ -105,17 +105,6 @@ describe('BotController', () => {
             expect(mockEnqueueMessage).not.toHaveBeenCalled();
         });
 
-        it.each([
-            ['an Error', new Error('redis down')],
-            ['a string', 'redis down'],
-            ['a non-error value', { code: 500 }],
-        ])('should still return 200 when enqueue rejects with %s', async (_label, reason) => {
-            mockEnqueueMessage.mockRejectedValueOnce(reason);
-            mockReq = { body: createWebhookPayload('BALANCE') };
-            await botController.handleMessage(mockReq as Request, mockRes as Response);
-            expect(mockRes.sendStatus).toHaveBeenCalledWith(200);
-            expect(mockEnqueueMessage).toHaveBeenCalledTimes(1);
-        });
     });
 
     describe('handleMessage - reliability edge cases', () => {

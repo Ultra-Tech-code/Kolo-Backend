@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { config } from '../config/env';
 import { enqueueMessage, type MessageJobData } from '../queue/message.queue';
+import { observabilityService } from '../services/observability.service';
 
 /**
  * Hard upper bound on how long we wait for a message to be enqueued before
@@ -140,7 +141,7 @@ export class BotController {
             return;
         }
 
-        console.log('Received message');
+        observabilityService.logInfo('Received webhook message');
 
         try {
             await this.enqueueWithTimeout({
@@ -149,11 +150,13 @@ export class BotController {
                 messageTimestamp: Date.now(),
             });
         } catch (err) {
-            // Never let a queue/Redis failure surface as an unhandled promise
+            observabilityService.alertCriticalFailure('Failed to enqueue webhook message', err, {
+                from: message.from,
+            });
+            // Let a queue/Redis failure surface as an unhandled promise
             // rejection. Returning 500 makes WhatsApp retry delivery rather
             // than silently dropping the message — important for a financial
             // app where a lost message can mean a lost transaction.
-            console.error('Failed to enqueue webhook message:', err);
             res.sendStatus(500);
             return;
         }
@@ -183,43 +186,5 @@ export class BotController {
         } finally {
             clearTimeout(timer);
         }
-
-        const message = this.extractTextMessage(body);
-
-        if (message && message.from && message.body) {
-            console.log('Received message');
-
-            try {
-                await enqueueMessage({
-                    from: message.from,
-                    msgBody: message.body,
-                    messageTimestamp: Date.now(),
-                });
-            } catch (error: unknown) {
-                // Swallow enqueue failures: WhatsApp requires a 200 to stop
-                // redelivery storms. Surfacing a 5xx here would trigger retries.
-                console.error('Failed to enqueue message:', getErrorMessage(error));
-            }
-        }
-
-        res.sendStatus(200);
-    }
-
-    /**
-     * Safely pull the first inbound text message out of the webhook payload.
-     * Returns null when the payload does not contain a usable text message.
-     */
-    private extractTextMessage(
-        body: WhatsAppWebhookPayload,
-    ): { from: string; body: string } | null {
-        const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-        const from = message?.from;
-        const text = message?.text?.body;
-
-        if (typeof from !== 'string' || typeof text !== 'string' || text.length === 0) {
-            return null;
-        }
-
-        return { from, body: text };
     }
 }

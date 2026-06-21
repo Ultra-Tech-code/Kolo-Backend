@@ -2,6 +2,7 @@ import express, { type ErrorRequestHandler } from 'express';
 import botRoutes from './routes/bot.routes';
 import { config } from './config/env';
 import { startWorker } from './workers/message.worker';
+import { observabilityService } from './services/observability.service';
 
 if (!config.ENCRYPTION_KEY) {
     throw new Error('ENCRYPTION_KEY environment variable is required');
@@ -12,14 +13,15 @@ if (!config.ENCRYPTION_KEY) {
 // escapes a request handler, worker, or timer is logged here instead of
 // taking the process down without a trace.
 process.on('unhandledRejection', (reason) => {
-    console.error('Unhandled promise rejection:', reason);
+    observabilityService.alertCriticalFailure('Unhandled promise rejection', reason);
 });
 
 process.on('uncaughtException', (err) => {
-    console.error('Uncaught exception:', err);
-    // After an uncaught exception the process is in an undefined state; exit so
-    // the orchestrator can restart it cleanly rather than serve corrupt state.
-    process.exit(1);
+    observabilityService.alertCriticalFailure('Uncaught exception', err).finally(() => {
+        // After an uncaught exception the process is in an undefined state; exit so
+        // the orchestrator can restart it cleanly rather than serve corrupt state.
+        process.exit(1);
+    });
 });
 
 const app = express();
@@ -40,8 +42,8 @@ app.get('/', (req, res) => {
 // from async route handlers here, so any error that slips past a controller's
 // own try/catch still produces a clean 500 instead of a default error page or
 // a hung request.
-const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
-    console.error('Unhandled request error:', err);
+const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
+    observabilityService.alertCriticalFailure('Unhandled request error', err, { path: req.path, method: req.method });
     if (res.headersSent) {
         return next(err);
     }
@@ -49,7 +51,10 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
 };
 app.use(errorHandler);
 
-app.listen(config.PORT, () => {
-    console.log(`Server is listening on port ${config.PORT}`);
+const server = app.listen(config.PORT, () => {
+    observabilityService.logInfo(`Server is listening on port ${config.PORT}`);
     startWorker();
 });
+
+// Enforce a server-level timeout
+server.setTimeout(30000);

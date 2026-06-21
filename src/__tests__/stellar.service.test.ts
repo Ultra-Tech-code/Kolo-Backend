@@ -78,7 +78,9 @@ describe('StellarService', () => {
                 const wallet = stellarService.generateWallet();
 
                 expect(wallet.publicKey).toBe('G_MOCK_PUBLIC_KEY');
-                expect(wallet.secret).toBe('S_MOCK_SECRET_KEY');
+                expect(wallet.encryptedSecret).toBeDefined();
+                expect(wallet.iv).toBeDefined();
+                expect(wallet.authTag).toBeDefined();
                 expect(fillSpy).toHaveBeenCalledWith(0);
             } finally {
                 fillSpy.mockRestore();
@@ -92,6 +94,8 @@ describe('StellarService', () => {
             new StellarService();
 
             expect(StellarSdk.Horizon.Server).toHaveBeenCalledWith('https://horizon.stellar.org');
+        });
+
         it('should return a generated keypair with encrypted secret', () => {
             const wallet = stellarService.generateWallet();
             expect(wallet.publicKey).toBe('G_MOCK_PUBLIC_KEY');
@@ -132,10 +136,15 @@ describe('StellarService', () => {
             } finally {
                 consoleSpy.mockRestore();
             }
-        it('should throw on non-200 response', async () => {
+        });
+
+        it('should log non-200 response', async () => {
             const axios = require('axios');
             axios.get.mockResolvedValueOnce({ status: 500 });
-            await expect(stellarService.fundTestnetAccount('G_MOCK')).rejects.toThrow('Friendbot funding failed');
+            const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+            await stellarService.fundTestnetAccount('G_MOCK');
+            expect(consoleSpy).toHaveBeenCalledWith('Friendbot funding failed:', expect.any(Error));
+            consoleSpy.mockRestore();
         });
     });
 

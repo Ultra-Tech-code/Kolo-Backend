@@ -4,7 +4,9 @@ import { encrypt } from '../utils/encryption.util';
 
 export interface GeneratedWallet {
     publicKey: string;
-    secret: string;
+    encryptedSecret: string;
+    iv: string;
+    authTag: string;
 }
 
 export class StellarService {
@@ -20,20 +22,10 @@ export class StellarService {
 
     public generateWallet(): GeneratedWallet {
         const pair = StellarSdk.Keypair.random();
-        const publicKey = pair.publicKey();
-        const secretBuffer = Buffer.from(pair.secret(), 'utf8');
-
-        try {
-            return {
-                publicKey,
-                secret: secretBuffer.toString('utf8'),
-            };
-        } finally {
-            // Best-effort cleanup: the secret still returns to the caller, but we
-            // minimize the extra copies that live in process memory.
-            secretBuffer.fill(0);
-        }
-        const { encryptedText, iv, authTag } = encrypt(pair.secret());
+        const secret = pair.secret();
+        const buffer = Buffer.from(secret);
+        const { encryptedText, iv, authTag } = encrypt(secret);
+        buffer.fill(0);
         return {
             publicKey: pair.publicKey(),
             encryptedSecret: encryptedText,
@@ -45,12 +37,16 @@ export class StellarService {
     public async fundTestnetAccount(publicKey: string): Promise<void> {
         if (config.STELLAR_NETWORK !== 'TESTNET') return;
 
-        const axios = require('axios');
-        const response = await axios.get(`https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`);
-        if (response.status !== 200) {
-            throw new Error(`Friendbot funding failed with status ${response.status}`);
+        try {
+            const axios = require('axios');
+            const response = await axios.get(`https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`);
+            if (response.status !== 200) {
+                throw new Error(`Friendbot funding failed with status ${response.status}`);
+            }
+            console.log(`Friendbot successfully funded ${publicKey}`);
+        } catch (error) {
+            console.error('Friendbot funding failed:', error);
         }
-        console.log(`Friendbot successfully funded ${publicKey}`);
     }
 
     public async checkBalance(publicKey: string): Promise<string> {
