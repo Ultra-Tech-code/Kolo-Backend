@@ -1,6 +1,7 @@
 import { StellarService } from '../services/stellar.service';
 import * as StellarSdk from '@stellar/stellar-sdk';
 import { config } from '../config/env';
+import { decrypt } from '../utils/encryption.util';
 
 const mAccount = { balances: [{ asset_type: 'native', balance: '100.50' }] };
 const mServer = {
@@ -8,15 +9,12 @@ const mServer = {
     fetchBaseFee: jest.fn().mockResolvedValue(100),
     submitTransaction: jest.fn().mockResolvedValue({ successful: true, hash: 'mock_tx_hash' })
 };
-import { decrypt } from '../utils/encryption.util';
 
 jest.mock('@stellar/stellar-sdk', () => {
     const originalModule = jest.requireActual('@stellar/stellar-sdk');
 
-    const mTransaction = {
-        sign: jest.fn(),
-    };
-    
+    const mTransaction = { sign: jest.fn() };
+
     const mTransactionBuilder = jest.fn().mockImplementation(() => ({
         addOperation: jest.fn().mockReturnThis(),
         setTimeout: jest.fn().mockReturnThis(),
@@ -30,17 +28,13 @@ jest.mock('@stellar/stellar-sdk', () => {
 
     return {
         ...originalModule,
-        Horizon: {
-            Server: jest.fn(() => mServer)
-        },
+        Horizon: { Server: jest.fn(() => mServer) },
         TransactionBuilder: mTransactionBuilder,
         Keypair: {
             fromSecret: jest.fn().mockReturnValue(mKeypair),
             random: jest.fn().mockReturnValue(mKeypair)
         },
-        Operation: {
-            payment: jest.fn().mockReturnValue({})
-        }
+        Operation: { payment: jest.fn().mockReturnValue({}) }
     };
 });
 
@@ -59,6 +53,7 @@ describe('StellarService', () => {
 
     afterAll(() => {
         config.ENCRYPTION_KEY = originalKey;
+        config.STELLAR_NETWORK = originalNetwork;
     });
 
     beforeEach(() => {
@@ -67,22 +62,17 @@ describe('StellarService', () => {
         stellarService = new StellarService();
     });
 
-    afterAll(() => {
-        config.STELLAR_NETWORK = originalNetwork;
-    });
-
     describe('generateWallet', () => {
-        it('should return a generated keypair and clear the temporary secret buffer', () => {
-            const fillSpy = jest.spyOn(Buffer.prototype, 'fill');
-            try {
-                const wallet = stellarService.generateWallet();
+        it('should return a generated keypair with encrypted secret', () => {
+            const wallet = stellarService.generateWallet();
 
-                expect(wallet.publicKey).toBe('G_MOCK_PUBLIC_KEY');
-                expect(wallet.secret).toBe('S_MOCK_SECRET_KEY');
-                expect(fillSpy).toHaveBeenCalledWith(0);
-            } finally {
-                fillSpy.mockRestore();
-            }
+            expect(wallet.publicKey).toBe('G_MOCK_PUBLIC_KEY');
+            expect(wallet.encryptedSecret).toBeDefined();
+            expect(wallet.iv).toBeDefined();
+            expect(wallet.authTag).toBeDefined();
+
+            const decrypted = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
+            expect(decrypted).toBe('S_MOCK_SECRET_KEY');
         });
     });
 
@@ -92,15 +82,6 @@ describe('StellarService', () => {
             new StellarService();
 
             expect(StellarSdk.Horizon.Server).toHaveBeenCalledWith('https://horizon.stellar.org');
-        it('should return a generated keypair with encrypted secret', () => {
-            const wallet = stellarService.generateWallet();
-            expect(wallet.publicKey).toBe('G_MOCK_PUBLIC_KEY');
-            expect(wallet.encryptedSecret).toBeDefined();
-            expect(wallet.iv).toBeDefined();
-            expect(wallet.authTag).toBeDefined();
-            
-            const decrypted = decrypt(wallet.encryptedSecret, wallet.iv, wallet.authTag);
-            expect(decrypted).toBe('S_MOCK_SECRET_KEY');
         });
     });
 
@@ -121,17 +102,6 @@ describe('StellarService', () => {
             expect(axios.get).not.toHaveBeenCalled();
         });
 
-        it('should log and swallow friendbot failures', async () => {
-            const axios = require('axios');
-            axios.get.mockRejectedValueOnce(new Error('friendbot down'));
-            const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-
-            try {
-                await stellarService.fundTestnetAccount('G_FAIL');
-                expect(consoleSpy).toHaveBeenCalledWith('Friendbot funding failed:', expect.any(Error));
-            } finally {
-                consoleSpy.mockRestore();
-            }
         it('should throw on non-200 response', async () => {
             const axios = require('axios');
             axios.get.mockResolvedValueOnce({ status: 500 });
