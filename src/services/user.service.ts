@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { StellarService } from './stellar.service';
+
 const stellarService = new StellarService();
 
 export class UserService {
@@ -9,7 +10,6 @@ export class UserService {
         });
 
         if (!user) {
-            // Generate Stellar wallet
             const wallet = stellarService.generateWallet();
 
             try {
@@ -29,7 +29,6 @@ export class UserService {
                 data: {
                     phoneNumber,
                     stellarWallet: walletData,
-                    language: 'en',
                 }
             });
             console.log(`Created new user for ${phoneNumber} with wallet ${wallet.publicKey}`);

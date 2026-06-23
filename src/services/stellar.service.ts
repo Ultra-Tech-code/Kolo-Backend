@@ -22,16 +22,19 @@ export class StellarService {
 
     public generateWallet(): GeneratedWallet {
         const pair = StellarSdk.Keypair.random();
-        const secret = pair.secret();
-        const buffer = Buffer.from(secret);
-        const { encryptedText, iv, authTag } = encrypt(secret);
-        buffer.fill(0);
-        return {
-            publicKey: pair.publicKey(),
-            encryptedSecret: encryptedText,
-            iv,
-            authTag,
-        };
+        const secretBuffer = Buffer.from(pair.secret(), 'utf8');
+
+        try {
+            const { encryptedText, iv, authTag } = encrypt(secretBuffer.toString('utf8'));
+            return {
+                publicKey: pair.publicKey(),
+                encryptedSecret: encryptedText,
+                iv,
+                authTag,
+            };
+        } finally {
+            secretBuffer.fill(0);
+        }
     }
 
     public async fundTestnetAccount(publicKey: string): Promise<void> {

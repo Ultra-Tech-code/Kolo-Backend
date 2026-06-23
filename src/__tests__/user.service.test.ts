@@ -71,7 +71,6 @@ describe('UserService', () => {
                 data: {
                     phoneNumber: '0987654321',
                     stellarWallet: expectedWallet,
-                    language: 'en'
                 }
             });
             expect(result).toEqual(createdUser);
