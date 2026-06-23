@@ -11,12 +11,12 @@ import { observabilityService } from '../services/observability.service';
 const ENQUEUE_TIMEOUT_MS = 10_000;
 
 /**
- * Strict typing for the subset of the WhatsApp Cloud API webhook payload that
- * we consume. The payload is attacker-influenced, so every field is optional
- * and must be treated as untrusted at runtime.
+ * Minimal, defensively-typed shape of the WhatsApp Cloud API webhook payload.
+ * Every field is optional because the payload is attacker-controllable.
  */
 interface WhatsAppTextMessage {
     from?: string;
+    id?: string;
     text?: { body?: string };
 }
 
@@ -40,34 +40,7 @@ interface WhatsAppWebhookBody {
 export interface IncomingTextMessage {
     from: string;
     msgBody: string;
-}
-
-/**
- * Minimal, defensively-typed shape of the WhatsApp Cloud API webhook payload.
- * Every field is optional because the payload is attacker-controllable: the
- * webhook is public, so we must treat the body as untrusted and never assume a
- * field exists. We only model the slice we actually read.
- */
-interface WhatsAppTextMessage {
-    from?: string;
-    text?: { body?: string };
-}
-
-interface WhatsAppChangeValue {
-    messages?: WhatsAppTextMessage[];
-}
-
-interface WhatsAppChange {
-    value?: WhatsAppChangeValue;
-}
-
-interface WhatsAppEntry {
-    changes?: WhatsAppChange[];
-}
-
-interface WhatsAppWebhookPayload {
-    object?: string;
-    entry?: WhatsAppEntry[];
+    whatsappMessageId: string;
 }
 
 /**
@@ -116,12 +89,13 @@ export class BotController {
         const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
         const from = message?.from;
         const msgBody = message?.text?.body;
+        const id = message?.id;
 
-        if (typeof from !== 'string' || typeof msgBody !== 'string' || msgBody.length === 0) {
+        if (typeof from !== 'string' || typeof msgBody !== 'string' || msgBody.length === 0 || typeof id !== 'string') {
             return null;
         }
 
-        return { from, msgBody };
+        return { from, msgBody, whatsappMessageId: id };
     }
 
     public async handleMessage(req: Request, res: Response) {
@@ -147,7 +121,7 @@ export class BotController {
             await this.enqueueWithTimeout({
                 from: message.from,
                 msgBody: message.msgBody,
-                messageTimestamp: Date.now(),
+                whatsappMessageId: message.whatsappMessageId,
             });
         } catch (err) {
             observabilityService.alertCriticalFailure('Failed to enqueue webhook message', err, {

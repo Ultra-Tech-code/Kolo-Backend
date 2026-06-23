@@ -31,13 +31,13 @@ describe('MessageQueue', () => {
         const job = await enqueueMessage({
             from: '12345',
             msgBody: 'BALANCE',
-            messageTimestamp: 1000,
+            whatsappMessageId: 'wamid.123',
         });
 
         expect(job).toBe(expectedJob);
         expect(mockAdd).toHaveBeenCalledWith(
             'process-message',
-            { from: '12345', msgBody: 'BALANCE', messageTimestamp: 1000 },
+            { from: '12345', msgBody: 'BALANCE', whatsappMessageId: 'wamid.123' },
             expect.objectContaining({ jobId: expect.any(String) })
         );
     });
@@ -48,12 +48,12 @@ describe('MessageQueue', () => {
         await enqueueMessage({
             from: '12345',
             msgBody: 'BALANCE',
-            messageTimestamp: 1000,
+            whatsappMessageId: 'wamid.123',
         });
         await enqueueMessage({
             from: '12345',
             msgBody: 'BALANCE',
-            messageTimestamp: 1000,
+            whatsappMessageId: 'wamid.123',
         });
 
         const firstCallId = mockAdd.mock.calls[0][2].jobId;
@@ -67,12 +67,12 @@ describe('MessageQueue', () => {
         await enqueueMessage({
             from: '12345',
             msgBody: 'BALANCE',
-            messageTimestamp: 1000,
+            whatsappMessageId: 'wamid.123',
         });
         await enqueueMessage({
             from: '67890',
             msgBody: 'HELP',
-            messageTimestamp: 2000,
+            whatsappMessageId: 'wamid.456',
         });
 
         const firstCallId = mockAdd.mock.calls[0][2].jobId;
@@ -83,7 +83,7 @@ describe('MessageQueue', () => {
     it('should close the queue', async () => {
         mockAdd.mockResolvedValue({ id: 'job-4' });
 
-        await enqueueMessage({ from: '12345', msgBody: 'TEST', messageTimestamp: 0 });
+        await enqueueMessage({ from: '12345', msgBody: 'TEST', whatsappMessageId: 'wamid.000' });
         await closeQueue();
 
         expect(mockClose).toHaveBeenCalled();

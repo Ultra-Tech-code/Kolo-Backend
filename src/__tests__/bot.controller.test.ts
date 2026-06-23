@@ -24,7 +24,7 @@ describe('BotController', () => {
 
     const createWebhookPayload = (text: string) => ({
         object: 'whatsapp_business_account',
-        entry: [{ changes: [{ value: { metadata: { phone_number_id: '123' }, messages: [{ from: '12345', text: { body: text } }] } }] }],
+        entry: [{ changes: [{ value: { metadata: { phone_number_id: '123' }, messages: [{ from: '12345', id: 'wamid.123', text: { body: text } }] } }] }],
     });
 
     describe('verifyWebhook', () => {
@@ -71,7 +71,7 @@ describe('BotController', () => {
             expect(mockEnqueueMessage).toHaveBeenCalledWith({
                 from: '12345',
                 msgBody: 'SEND 10 @jane',
-                messageTimestamp: expect.any(Number),
+                whatsappMessageId: 'wamid.123',
             });
         });
 
