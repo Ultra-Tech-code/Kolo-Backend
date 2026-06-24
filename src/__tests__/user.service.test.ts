@@ -70,7 +70,7 @@ describe('UserService', () => {
             expect(prismaClientMock.user.create).toHaveBeenCalledWith({
                 data: {
                     phoneNumber: '0987654321',
-                    stellarWallet: expectedWallet
+                    stellarWallet: expectedWallet,
                 }
             });
             expect(result).toEqual(createdUser);

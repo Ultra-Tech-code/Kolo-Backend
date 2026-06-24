@@ -8,6 +8,10 @@ jest.mock('../queue/message.queue', () => ({
     enqueueMessage: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
 }));
 
+jest.mock('../middleware/rateLimiter', () => ({
+    webhookRateLimiter: (req: any, res: any, next: any) => next(),
+}));
+
 const app = express();
 
 app.use(express.json({
@@ -44,13 +48,14 @@ describe('Webhook Integration', () => {
 
     it('should reject requests with an invalid signature', async () => {
         const payload = { object: 'whatsapp_business_account' };
-        const rawBody = Buffer.from(JSON.stringify(payload), 'utf8');
-        const wrongHash = crypto.createHmac('sha256', 'wrong_secret').update(rawBody).digest('hex');
+        const rawBodyString = JSON.stringify(payload);
+        const wrongHash = crypto.createHmac('sha256', 'wrong_secret').update(rawBodyString, 'utf8').digest('hex');
 
         const response = await request(app)
             .post('/api/webhook')
             .set('x-hub-signature-256', `sha256=${wrongHash}`)
-            .send(payload);
+            .set('Content-Type', 'application/json')
+            .send(rawBodyString);
 
         expect(response.status).toBe(401);
         expect(response.body.error).toBe('Invalid signature');
@@ -70,16 +75,18 @@ describe('Webhook Integration', () => {
                 }]
             }]
         };
-        const rawBody = Buffer.from(JSON.stringify(payload), 'utf8');
-        const validHash = crypto.createHmac('sha256', testSecret).update(rawBody).digest('hex');
+        const rawBodyString = JSON.stringify(payload);
+        const validHash = crypto.createHmac('sha256', testSecret).update(rawBodyString, 'utf8').digest('hex');
 
         const response = await request(app)
             .post('/api/webhook')
             .set('x-hub-signature-256', `sha256=${validHash}`)
             .set('Content-Type', 'application/json')
-            // Sending the buffer ensures supertest uses the exact bytes for the request body
-            .send(rawBody);
+            .send(rawBodyString);
 
+        if (response.status !== 200) {
+            console.log('Webhook integration failure response:', response.body);
+        }
         expect(response.status).toBe(200);
     });
 });

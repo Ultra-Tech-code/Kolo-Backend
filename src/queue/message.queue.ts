@@ -5,7 +5,7 @@ import crypto from 'crypto';
 export interface MessageJobData {
     from: string;
     msgBody: string;
-    messageTimestamp: number;
+    whatsappMessageId: string;
 }
 
 const connection = {
@@ -36,10 +36,10 @@ function getQueue(): Queue {
 
 export async function enqueueMessage(data: MessageJobData): Promise<Job> {
     const queue = getQueue();
-    const jobId = crypto
-        .createHash('sha256')
-        .update(`${data.from}:${data.msgBody}:${data.messageTimestamp}`)
-        .digest('hex');
+    // Use the native WhatsApp message ID directly as the BullMQ jobId.
+    // This ensures that if WhatsApp retries a webhook delivery for the exact same message,
+    // BullMQ will treat it as a duplicate and safely ignore it.
+    const jobId = data.whatsappMessageId;
 
     return await queue.add('process-message', data, {
         jobId,

@@ -20,15 +20,18 @@
   "dependencies": {
     "@prisma/client": "^5.11.0",
     "@stellar/stellar-sdk": "^15.1.0",
+    "@types/supertest": "^7.2.0",
     "axios": "^1.17.0",
     "bullmq": "^5.79.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
+    "i18next": "^26.3.1",
     "ioredis": "^5.11.1",
     "pg": "^8.21.0",
     "rate-limit-redis": "^5.0.0",
-    "react": "^19.2.7"
+    "react": "^19.2.7",
+    "supertest": "^7.2.2"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

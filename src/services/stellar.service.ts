@@ -40,12 +40,16 @@ export class StellarService {
     public async fundTestnetAccount(publicKey: string): Promise<void> {
         if (config.STELLAR_NETWORK !== 'TESTNET') return;
 
-        const axios = require('axios');
-        const response = await axios.get(`https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`);
-        if (response.status !== 200) {
-            throw new Error(`Friendbot funding failed with status ${response.status}`);
+        try {
+            const axios = require('axios');
+            const response = await axios.get(`https://friendbot.stellar.org?addr=${encodeURIComponent(publicKey)}`);
+            if (response.status !== 200) {
+                throw new Error(`Friendbot funding failed with status ${response.status}`);
+            }
+            console.log(`Friendbot successfully funded ${publicKey}`);
+        } catch (error) {
+            console.error('Friendbot funding failed:', error);
         }
-        console.log(`Friendbot successfully funded ${publicKey}`);
     }
 
     public async checkBalance(publicKey: string): Promise<string> {

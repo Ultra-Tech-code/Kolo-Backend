@@ -31,6 +31,7 @@ export class UserService {
                     stellarWallet: walletData,
                 }
             });
+            console.log(`Created new user for ${phoneNumber} with wallet ${wallet.publicKey}`);
         }
         return user;
     }

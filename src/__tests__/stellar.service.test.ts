@@ -102,10 +102,17 @@ describe('StellarService', () => {
             expect(axios.get).not.toHaveBeenCalled();
         });
 
-        it('should throw on non-200 response', async () => {
+        it('should log and swallow friendbot failures', async () => {
             const axios = require('axios');
             axios.get.mockResolvedValueOnce({ status: 500 });
-            await expect(stellarService.fundTestnetAccount('G_MOCK')).rejects.toThrow('Friendbot funding failed');
+            const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+            
+            try {
+                await stellarService.fundTestnetAccount('G_MOCK');
+                expect(consoleSpy).toHaveBeenCalledWith('Friendbot funding failed:', expect.any(Error));
+            } finally {
+                consoleSpy.mockRestore();
+            }
         });
     });
 

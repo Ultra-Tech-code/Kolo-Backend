@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { config } from '../config/env';
 import { enqueueMessage, type MessageJobData } from '../queue/message.queue';
+import { observabilityService } from '../services/observability.service';
 
 /**
  * Hard upper bound on how long we wait for a message to be enqueued before
@@ -10,12 +11,12 @@ import { enqueueMessage, type MessageJobData } from '../queue/message.queue';
 const ENQUEUE_TIMEOUT_MS = 10_000;
 
 /**
- * Strict typing for the subset of the WhatsApp Cloud API webhook payload that
- * we consume. The payload is attacker-influenced, so every field is optional
- * and must be treated as untrusted at runtime.
+ * Minimal, defensively-typed shape of the WhatsApp Cloud API webhook payload.
+ * Every field is optional because the payload is attacker-controllable.
  */
 interface WhatsAppTextMessage {
     from?: string;
+    id?: string;
     text?: { body?: string };
 }
 
@@ -39,34 +40,7 @@ interface WhatsAppWebhookBody {
 export interface IncomingTextMessage {
     from: string;
     msgBody: string;
-}
-
-/**
- * Minimal, defensively-typed shape of the WhatsApp Cloud API webhook payload.
- * Every field is optional because the payload is attacker-controllable: the
- * webhook is public, so we must treat the body as untrusted and never assume a
- * field exists. We only model the slice we actually read.
- */
-interface WhatsAppTextMessage {
-    from?: string;
-    text?: { body?: string };
-}
-
-interface WhatsAppChangeValue {
-    messages?: WhatsAppTextMessage[];
-}
-
-interface WhatsAppChange {
-    value?: WhatsAppChangeValue;
-}
-
-interface WhatsAppEntry {
-    changes?: WhatsAppChange[];
-}
-
-interface WhatsAppWebhookPayload {
-    object?: string;
-    entry?: WhatsAppEntry[];
+    whatsappMessageId: string;
 }
 
 /**
@@ -115,12 +89,13 @@ export class BotController {
         const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
         const from = message?.from;
         const msgBody = message?.text?.body;
+        const id = message?.id;
 
-        if (typeof from !== 'string' || typeof msgBody !== 'string' || msgBody.length === 0) {
+        if (typeof from !== 'string' || typeof msgBody !== 'string' || msgBody.length === 0 || typeof id !== 'string') {
             return null;
         }
 
-        return { from, msgBody };
+        return { from, msgBody, whatsappMessageId: id };
     }
 
     public async handleMessage(req: Request, res: Response) {
@@ -140,20 +115,22 @@ export class BotController {
             return;
         }
 
-        console.log('Received message');
+        observabilityService.logInfo('Received webhook message');
 
         try {
             await this.enqueueWithTimeout({
                 from: message.from,
                 msgBody: message.msgBody,
-                messageTimestamp: Date.now(),
+                whatsappMessageId: message.whatsappMessageId,
             });
         } catch (err) {
-            // Never let a queue/Redis failure surface as an unhandled promise
+            observabilityService.alertCriticalFailure('Failed to enqueue webhook message', err, {
+                from: message.from,
+            });
+            // Let a queue/Redis failure surface as an unhandled promise
             // rejection. Returning 500 makes WhatsApp retry delivery rather
             // than silently dropping the message — important for a financial
             // app where a lost message can mean a lost transaction.
-            console.error('Failed to enqueue webhook message:', err);
             res.sendStatus(500);
             return;
         }
@@ -183,43 +160,5 @@ export class BotController {
         } finally {
             clearTimeout(timer);
         }
-
-        const message = this.extractTextMessage(body);
-
-        if (message && message.from && message.body) {
-            console.log('Received message');
-
-            try {
-                await enqueueMessage({
-                    from: message.from,
-                    msgBody: message.body,
-                    messageTimestamp: Date.now(),
-                });
-            } catch (error: unknown) {
-                // Swallow enqueue failures: WhatsApp requires a 200 to stop
-                // redelivery storms. Surfacing a 5xx here would trigger retries.
-                console.error('Failed to enqueue message:', getErrorMessage(error));
-            }
-        }
-
-        res.sendStatus(200);
-    }
-
-    /**
-     * Safely pull the first inbound text message out of the webhook payload.
-     * Returns null when the payload does not contain a usable text message.
-     */
-    private extractTextMessage(
-        body: WhatsAppWebhookPayload,
-    ): { from: string; body: string } | null {
-        const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-        const from = message?.from;
-        const text = message?.text?.body;
-
-        if (typeof from !== 'string' || typeof text !== 'string' || text.length === 0) {
-            return null;
-        }
-
-        return { from, body: text };
     }
 }

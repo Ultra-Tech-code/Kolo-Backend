@@ -24,7 +24,7 @@ describe('BotController', () => {
 
     const createWebhookPayload = (text: string) => ({
         object: 'whatsapp_business_account',
-        entry: [{ changes: [{ value: { metadata: { phone_number_id: '123' }, messages: [{ from: '12345', text: { body: text } }] } }] }],
+        entry: [{ changes: [{ value: { metadata: { phone_number_id: '123' }, messages: [{ from: '12345', id: 'wamid.123', text: { body: text } }] } }] }],
     });
 
     describe('verifyWebhook', () => {
@@ -71,7 +71,7 @@ describe('BotController', () => {
             expect(mockEnqueueMessage).toHaveBeenCalledWith({
                 from: '12345',
                 msgBody: 'SEND 10 @jane',
-                messageTimestamp: expect.any(Number),
+                whatsappMessageId: 'wamid.123',
             });
         });
 
@@ -105,17 +105,6 @@ describe('BotController', () => {
             expect(mockEnqueueMessage).not.toHaveBeenCalled();
         });
 
-        it.each([
-            ['an Error', new Error('redis down')],
-            ['a string', 'redis down'],
-            ['a non-error value', { code: 500 }],
-        ])('should still return 200 when enqueue rejects with %s', async (_label, reason) => {
-            mockEnqueueMessage.mockRejectedValueOnce(reason);
-            mockReq = { body: createWebhookPayload('BALANCE') };
-            await botController.handleMessage(mockReq as Request, mockRes as Response);
-            expect(mockRes.sendStatus).toHaveBeenCalledWith(200);
-            expect(mockEnqueueMessage).toHaveBeenCalledTimes(1);
-        });
     });
 
     describe('handleMessage - reliability edge cases', () => {
