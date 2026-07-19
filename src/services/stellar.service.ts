@@ -86,10 +86,16 @@ export class StellarService {
         
         // Invalidate cache
         try {
-            const keys = await redisClient.keys(`tx_history:${sourceKeypair.publicKey()}:*`);
-            if (keys.length > 0) await redisClient.del(...keys);
-            const destKeys = await redisClient.keys(`tx_history:${destinationPublicKey}:*`);
-            if (destKeys.length > 0) await redisClient.del(...destKeys);
+            const invalidateKeys = async (pubKey: string) => {
+                let cursor = '0';
+                do {
+                    const [nextCursor, keys] = await redisClient.scan(cursor, 'MATCH', `tx_history:${pubKey}:*`, 'COUNT', 100);
+                    if (keys.length > 0) await redisClient.del(...keys);
+                    cursor = nextCursor;
+                } while (cursor !== '0');
+            };
+            await invalidateKeys(sourceKeypair.publicKey());
+            await invalidateKeys(destinationPublicKey);
         } catch (e) {
             console.error('Failed to invalidate cache', e);
         }
@@ -140,16 +146,20 @@ export class StellarService {
         }
 
         const parsedTransactions = [];
-        for (const tx of response.records) {
+        const opsPromises = response.records.map((tx: any) => tx.operations().catch((e: any) => null));
+        const opsResults = await Promise.all(opsPromises);
+
+        for (let i = 0; i < response.records.length; i++) {
+            const tx = response.records[i];
+            const ops = opsResults[i];
+            
             let type = 'unknown';
             let amount = '0';
             let asset = 'XLM';
             let counterparty = 'Unknown';
 
             try {
-                // We fetch operations for the transaction to get details
-                const ops = await tx.operations();
-                if (ops.records.length > 0) {
+                if (ops && ops.records && ops.records.length > 0) {
                     const op = ops.records[0] as any;
                     if (op.type === 'payment') {
                         amount = op.amount;
@@ -173,7 +183,7 @@ export class StellarService {
                     }
                 }
             } catch (opErr) {
-                console.error('Error fetching ops for tx', tx.id, opErr);
+                console.error('Error parsing ops for tx', tx.id, opErr);
             }
 
             parsedTransactions.push({

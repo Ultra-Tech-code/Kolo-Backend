@@ -92,6 +92,7 @@ describe('MessageProcessor', () => {
             mockRedisGet.mockResolvedValueOnce('cursor_123'); // For history cursor
             await processor.processCommand('12345', 'HISTORY MORE');
             expect(mockGetTransactionHistory).toHaveBeenCalledWith('G_PUB', 'cursor_123', 10);
+            expect(mockRedisSet).toHaveBeenCalledWith('user_state:12345:history_cursor', 'cursor_123', 'EX', 3600);
         });
 
         it('should handle HELP command', async () => {

@@ -15,7 +15,8 @@ jest.mock('../lib/redis', () => ({
         get: jest.fn(),
         set: jest.fn(),
         del: jest.fn(),
-        keys: jest.fn().mockResolvedValue([])
+        keys: jest.fn().mockResolvedValue([]),
+        scan: jest.fn()
     }
 }));
 const { redisClient } = require('../lib/redis');
@@ -23,6 +24,8 @@ const mockRedisGet = redisClient.get as jest.Mock;
 const mockRedisSet = redisClient.set as jest.Mock;
 const mockRedisDel = redisClient.del as jest.Mock;
 const mockRedisKeys = redisClient.keys as jest.Mock;
+const mockRedisScan = redisClient.scan as jest.Mock;
+mockRedisScan.mockResolvedValue(['0', []]);
 
 jest.mock('@stellar/stellar-sdk', () => {
     const originalModule = jest.requireActual('@stellar/stellar-sdk');
@@ -184,7 +187,8 @@ describe('StellarService', () => {
         });
 
         it('should invalidate redis cache after sendPayment', async () => {
-            mockRedisKeys.mockResolvedValue(['tx_history:G_MOCK:page:1']);
+            mockRedisScan.mockResolvedValueOnce(['0', ['tx_history:G_MOCK:page:1']]);
+            mockRedisScan.mockResolvedValueOnce(['0', ['tx_history:GBBM6BKZPEHWPI3VK3VNKEJEXTMIGNNCE2ZEXSVEEKSJNDYTK2E4QUDE:page:1']]);
             const validPublicKey = 'GBBM6BKZPEHWPI3VK3VNKEJEXTMIGNNCE2ZEXSVEEKSJNDYTK2E4QUDE';
             await stellarService.sendPayment('S_MOCK', validPublicKey, '10.0');
             expect(mockRedisDel).toHaveBeenCalledWith('tx_history:G_MOCK:page:1');

@@ -47,17 +47,26 @@ export class UserService {
 
     public async getUserByPublicKey(publicKey: string): Promise<any> {
         const cacheKey = `address_to_username:${publicKey}`;
-        const cached = await redisClient.get(cacheKey);
-        if (cached) {
-            return JSON.parse(cached);
+        try {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) {
+                return JSON.parse(cached);
+            }
+        } catch (e) {
+            console.error('Redis get error:', e);
         }
 
         const user = await prisma.user.findFirst({
-            where: { stellarWallet: { contains: publicKey } }
+            where: { stellarWallet: { contains: publicKey } },
+            select: { username: true, phoneNumber: true }
         });
 
         if (user) {
-            await redisClient.set(cacheKey, JSON.stringify(user), 'EX', 3600); // 1 hour TTL
+            try {
+                await redisClient.set(cacheKey, JSON.stringify(user), 'EX', 3600); // 1 hour TTL
+            } catch (e) {
+                console.error('Redis set error:', e);
+            }
         }
         return user;
     }

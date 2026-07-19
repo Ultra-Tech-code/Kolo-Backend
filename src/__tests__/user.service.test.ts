@@ -3,6 +3,14 @@ import { PrismaClient } from '@prisma/client';
 import { StellarService } from '../services/stellar.service';
 
 // Mock the modules
+jest.mock('../lib/redis', () => ({
+    redisClient: {
+        get: jest.fn(),
+        set: jest.fn(),
+        del: jest.fn()
+    }
+}));
+
 jest.mock('@prisma/client', () => {
     const mPrismaClient = {
         user: {

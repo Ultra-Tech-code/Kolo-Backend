@@ -159,15 +159,15 @@ export class MessageProcessor {
                 // Attempt to resolve Kolo username if it's a stellar public key
                 if (tx.counterparty && tx.counterparty.startsWith('G') && tx.counterparty.length === 56) {
                     const counterpartyUser = await this.userService.getUserByPublicKey(tx.counterparty);
-                    if (counterpartyUser) {
-                        displayCounterparty = counterpartyUser.username ? '@' + counterpartyUser.username : counterpartyUser.phoneNumber;
+                    if (counterpartyUser && counterpartyUser.username) {
+                        displayCounterparty = '@' + counterpartyUser.username;
                     } else {
-                        // Shorten address if not found
+                        // Shorten address if not found or no username
                         displayCounterparty = tx.counterparty.substring(0, 5) + '...' + tx.counterparty.substring(52);
                     }
                 }
 
-                const dateStr = new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const dateStr = new Date(tx.date).toLocaleDateString(lang, { month: 'short', day: 'numeric', year: 'numeric' });
                 const shortHash = tx.hash.substring(0, 5) + '...' + tx.hash.substring(52);
 
                 if (tx.type === 'payment sent') {
